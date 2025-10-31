@@ -1,4 +1,5 @@
 #include "../inc/def.h"
+#include <unistd.h>
 #include <SDL3/SDL_main.h>
 #include <SDL3/SDL_vulkan.h>
 #include <spawn.h>
@@ -66,6 +67,12 @@ static void iter() {
 
 static int sv[2];
 u8 *pdata;
+static int recvh(void *) {
+  while (!quit){
+    auto l = read(sv[0], pdata, 1514);
+  }
+  return 0;
+}
 int main() {
   if (-1 == socketpair(AF_UNIX, SOCK_STREAM, 0, sv))
     return 1;
@@ -74,6 +81,7 @@ int main() {
   sprintf(buf, "%d", sv[1]);
   char *argv[] = {"sudo", "obj/eth", buf, 0};
   posix_spawnp(&pid, "sudo", 0, 0, argv, 0);
+
   extern void crtwin(), crtinst(), crtsrf();
   extern int gpu(void *);
   crtwin();

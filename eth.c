@@ -1,10 +1,10 @@
 #include <arpa/inet.h>
-#include <stdio.h>
 #include <assert.h>
 #include <net/ethernet.h>
 #include <net/if.h>
 #include <netpacket/packet.h>
 #include <signal.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <sys/ioctl.h>
 #include <threads.h>
@@ -30,7 +30,7 @@ static struct {
 } sbuf = {{2, local, 0x1919, 0}, "test"}, rbuf;
 
 static int sendh(void *) {
-  struct sockaddr_ll addr = {AF_PACKET, 0, 1, 0, 0, 6, "\6"};
+  struct sockaddr_ll addr = {AF_PACKET, 0, 2, 0, 0, 6, "\6"};
   void *buf = &sbuf;
   while (run) {
     auto l = read(ui, buf, 1514);
@@ -42,13 +42,21 @@ static int sendh(void *) {
 }
 static int recvh(void *) {
   void *buf = &rbuf;
+  u16 seq = 0;
+  u64 loss = 0;
   while (run) {
     auto l = recvfrom(socketh, (void *)&rbuf, 1514, 0, 0, 0);
     if (-1 == l)
       break;
     if (rbuf.p != 0x1919 && rbuf.src == local)
       continue;
-    if (-1 == write(ui, buf, l))
+    u16 s = rbuf.seq;
+    u64 lo = s - seq - 1;
+    loss += lo;
+    if (lo)
+      printf("loss:%ld\n", loss);
+    seq = s;
+    if (-1 == write(ui, buf + 16, l - 16))
       break;
   }
   return run = 0;
