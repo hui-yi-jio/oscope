@@ -87,10 +87,12 @@ int main() {
   crtwin();
   crtinst();
   crtsrf();
-  thrd_t gputhrd;
+  thrd_t gputhrd, recvt;
   thrd_create(&gputhrd, gpu, 0);
+  thrd_create(&recvt, recvh, 0);
   int res;
   while (!quit)
     iter();
   thrd_join(gputhrd, &res);
+  thrd_join(recvt, &res);
 }
