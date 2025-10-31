@@ -17,14 +17,12 @@ void crtwin() {
   auto displays = SDL_GetDisplays(0);
   auto modes = SDL_GetCurrentDisplayMode(displays[0]);
   f32 scale = modes->pixel_density;
-  w = modes->w * scale;
-  h = modes->h * scale;
+  w = 1920, h = 1080;
 #define WFLAGS                                                                 \
   SDL_WINDOW_VULKAN | SDL_WINDOW_HIGH_PIXEL_DENSITY | SDL_WINDOW_RESIZABLE
   win = SDL_CreateWindow("test", w, h, WFLAGS);
+  w *= scale, h *= scale;
   win || printf("failed to create window: %s\n", SDL_GetError());
-  SDL_SetWindowRelativeMouseMode(win, 1);
-  SDL_SetWindowFullscreen(win, 1);
 }
 #if VKDBG
 static u32 dbgh(VkDebugUtilsMessageSeverityFlagBitsEXT s,
@@ -207,17 +205,11 @@ int gpu(void *) {
       .usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
       .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
   };
-  VkBuffer asciibuf, instbuf, objbuf, gridbuf;
-  constexpr usize objsize = 65536 * 32, gridsize = 65536 * (48 * 8 + 16);
+  VkBuffer asciibuf, instbuf;
   vkCreateBuffer(dev, &bufinfo, 0, &asciibuf);
-  bufinfo.size = objsize;
+  bufinfo.size = 65536;
   bufinfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
   vkCreateBuffer(dev, &bufinfo, 0, &instbuf);
-  bufinfo.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
-  vkCreateBuffer(dev, &bufinfo, 0, &objbuf);
-  bufinfo.size = gridsize;
-  bufinfo.usage |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-  vkCreateBuffer(dev, &bufinfo, 0, &gridbuf);
 
   vkGetBufferMemoryRequirements(dev, asciibuf, &memreq);
   auto bufmem = memalloc(dev, memreq, memprop, 6);
@@ -232,31 +224,11 @@ int gpu(void *) {
   vec4 *uidata;
   vkMapMemory(dev, uimem, 0, memreq.size, 0, (void *)&uidata);
 
-  vkGetBufferMemoryRequirements(dev, objbuf, &memreq);
-  auto objmem = memalloc(dev, memreq, memprop, 7);
-  vkBindBufferMemory(dev, objbuf, objmem, 0);
-  struct {
-    vec4 col, pv, a;
-  } *objdata;
-  vkMapMemory(dev, objmem, 0, memreq.size, 0, (void *)&objdata);
-  constexpr usize n = 20000;
-  for (usize i = 0; i < n; ++i) {
-    objdata[i].col.x = 3.5;
-    objdata[i].col.y = 30;
-    objdata[i].col.z = 0.7;
-    vec4 pv = {(i & 127) * 1.5e-3 + 1e-2, i * 7e-6 + 1e-2, 0, 0};
-    objdata[i].pv = pv;
-  }
-
-  vkGetBufferMemoryRequirements(dev, gridbuf, &memreq);
-  auto gridmem = memalloc(dev, memreq, memprop, 1);
-  vkBindBufferMemory(dev, gridbuf, gridmem, 0);
-
   VkFence fence;
-  VkFenceCreateInfo fenceInfo = {VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
+  VkFenceCreateInfo fenceInfo = {.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
   vkCreateFence(dev, &fenceInfo, 0, &fence);
   VkCommandBufferBeginInfo beginfo = {
-      VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
+      .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
 
   VkBufferImageCopy region = {
       .imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1},
@@ -381,32 +353,15 @@ int gpu(void *) {
       .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
       .sampler = samp,
   };
-  VkDescriptorBufferInfo descbufinfo[] = {
-      {
-          .range = objsize,
-          .buffer = objbuf,
-      },
-      {
-          .range = gridsize,
-          .buffer = gridbuf,
-      },
-  };
-  VkWriteDescriptorSet wrdesc[3] = {{
+  VkWriteDescriptorSet wrdesc = {
       .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
       .dstSet = descset,
       .dstBinding = 0,
       .descriptorCount = 1,
       .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-      .pBufferInfo = descbufinfo,
       .pImageInfo = &descimginfo,
-  }};
-  wrdesc[1] = wrdesc[0];
-  wrdesc[1].dstBinding = 1;
-  wrdesc[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-  wrdesc[2] = wrdesc[1];
-  wrdesc[2].pBufferInfo = descbufinfo + 1;
-  wrdesc[2].dstBinding = 2;
-  vkUpdateDescriptorSets(dev, 3, wrdesc, 0, 0);
+  };
+  vkUpdateDescriptorSets(dev, 1, &wrdesc, 0, 0);
 
   VkPushConstantRange cstrg = {
       .stageFlags = VK_SHADER_STAGE_ALL,
@@ -508,25 +463,13 @@ int gpu(void *) {
   VkPipeline uipipe;
   vkCreateGraphicsPipelines(dev, 0, 1, &grapinfo, 0, &uipipe);
 
-  crtshdinfo(grid_comp, COMPUTE);
-  crtshdinfo(coll_comp, COMPUTE);
-  VkComputePipelineCreateInfo compinfo = {
-      .sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
-      .stage = grid_comp_info,
-      .layout = layout,
-  };
-  VkPipeline compipe, collpipe;
-  vkCreateComputePipelines(dev, 0, 1, &compinfo, 0, &compipe);
-  compinfo.stage = coll_comp_info;
-  vkCreateComputePipelines(dev, 0, 1, &compinfo, 0, &collpipe);
-
   VkSwapchainCreateInfoKHR swpchninfo = {
       .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
       .pNext = 0,
       .surface = srf,
       .minImageCount = 2,
       .imageFormat = colorfmt,
-      .imageColorSpace = 0, // colorspace,
+      .imageColorSpace = colorspace,
       .imageExtent = {w, h},
       .imageArrayLayers = 1,
       .imageUsage = 0x13,
@@ -555,9 +498,6 @@ int gpu(void *) {
   vkCreateSemaphore(dev, &seminfo, 0, &imgsem);
   vkCreateSemaphore(dev, &seminfo, 0, &presem);
 
-  VkMemoryBarrier membarr = {
-      .sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER,
-  };
   VkRenderingAttachmentInfo colatt = {
       .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
       .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
@@ -598,8 +538,6 @@ int gpu(void *) {
     }
     cmn.scl = 10 / (vec2){w, h};
     cmn.mp = mousepos * 1e-4;
-    cmn.cnt = n;
-    usize grpcnt = (cmn.cnt + 255) >> 8;
 
     f32 fontw = cmn.scl.x * 8, fonty = 1 - cmn.scl.y * 16;
     char buf[32];
@@ -609,7 +547,7 @@ int gpu(void *) {
 
     vkWaitForFences(dev, 1, &fence, 1, -1);
     vkResetFences(dev, 1, &fence);
-    u32 rslt;
+    int rslt;
     while ((rslt = vkAcquireNextImageKHR(dev, swpchn, -1, imgsem, 0, &idx))) {
       if (rslt != VK_ERROR_OUT_OF_DATE_KHR && rslt != VK_SUBOPTIMAL_KHR) {
         printf("swapchain error:%d\n", rslt);
@@ -634,17 +572,10 @@ int gpu(void *) {
 
     vkResetCommandBuffer(cmdbuf, 0);
     vkBeginCommandBuffer(cmdbuf, &beginfo);
-    vkCmdBindDescriptorSets(cmdbuf, VK_PIPELINE_BIND_POINT_COMPUTE, layout, 0,
-                            1, &descset, 0, 0);
     vkCmdBindDescriptorSets(cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, layout, 0,
                             1, &descset, 0, 0);
     vkCmdPushConstants(cmdbuf, layout, VK_SHADER_STAGE_ALL, 0, 20, &cmn);
 
-    vkCmdBindPipeline(cmdbuf, VK_PIPELINE_BIND_POINT_COMPUTE, compipe);
-    vkCmdDispatch(cmdbuf, grpcnt, 1, 1);
-
-    membarr.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT,
-    membarr.dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
     imgbarr.srcAccessMask = 0,
     imgbarr.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
     imgbarr.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
@@ -653,14 +584,12 @@ int gpu(void *) {
                          VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT |
                              VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT |
                              VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-                         0, 1, &membarr, 0, 0, 1, &imgbarr);
-    vkCmdBindPipeline(cmdbuf, VK_PIPELINE_BIND_POINT_COMPUTE, collpipe);
-    vkCmdDispatch(cmdbuf, grpcnt, 1, 1);
+                         0, 0, 0, 0, 0, 1, &imgbarr);
 
     vkCmdBeginRendering(cmdbuf, &rendinfo);
 
-    vkCmdBindPipeline(cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
-    vkCmdDraw(cmdbuf, n, 1, 0, 0);
+    // vkCmdBindPipeline(cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+    // vkCmdDraw(cmdbuf, 0, 1, 0, 0);
 
     vkCmdBindPipeline(cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, uipipe);
     vkCmdBindVertexBuffers(cmdbuf, 0, 1, &instbuf, &(usize){0});
@@ -668,8 +597,6 @@ int gpu(void *) {
 
     vkCmdEndRendering(cmdbuf);
 
-    membarr.srcAccessMask = VK_ACCESS_SHADER_READ_BIT,
-    membarr.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
     imgbarr.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
     imgbarr.dstAccessMask = 0,
     imgbarr.oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
@@ -677,9 +604,8 @@ int gpu(void *) {
     vkCmdPipelineBarrier(cmdbuf,
                          VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT |
                              VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-                         VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 1, &membarr, 0, 0,
-                         1, &imgbarr);
-    vkCmdFillBuffer(cmdbuf, gridbuf, 0, -1, 0);
+                         VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, 0, 0, 0, 1,
+                         &imgbarr);
     vkEndCommandBuffer(cmdbuf);
 
     submitinfo.pWaitSemaphores = &imgsem;
