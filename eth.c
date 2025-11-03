@@ -22,10 +22,11 @@ static void sigh(int) { run = 0; }
 
 static int socketh, ui;
 static const u64 local = 0x222222222222;
+typedef struct {
+  u128 dst : 48, src : 48, p : 16, seq : 16;
+} Head;
 static struct {
-  struct {
-    u128 dst : 48, src : 48, p : 16, seq : 16;
-  };
+  Head h;
   u8 data[1500];
 } sbuf = {{2, local, 0x1919, 0}, "test"}, rbuf;
 
