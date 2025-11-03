@@ -8,7 +8,7 @@
 #include <semaphore.h>
 #include <signal.h>
 #include <stdio.h>
-#include <stdlib.h>
+#include <string.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <threads.h>
@@ -23,7 +23,13 @@ static const u64 local = 0x222222222222;
 static int sendh(void *p) {
   struct sockaddr_ll addr = {AF_PACKET, 0, 1, 0, 0, 6, "\6"};
   Smem *sm = p;
+  struct timespec ts = {0, 1000000};
   while (!quit) {
+    sem_timedwait(&sm->sems, &ts);
+    int val;
+    sem_getvalue(&sm->sems, &val);
+    if (!val)
+      continue;
     auto l = sendto(socketh, &sm->bufs, sizeof(Head) + 1024, 0,
                     (struct sockaddr *)&addr, sizeof(addr));
     if (l == -1) {
@@ -40,7 +46,9 @@ static int recvh(void *p) {
   u64 loss = 0;
   Smem *sm = p;
   while (!quit) {
-    auto l = recvfrom(socketh, &sm->bufr, sizeof(Head) + 1024, 0, 0, 0);
+    auto l = 32; // recvfrom(socketh, &sm->bufr, sizeof(Head) + 1024, 0, 0, 0);
+    memset(&sm->bufr, ++seq, 1024);
+    sem_post(&sm->semr);
     if (l == -1) {
       perror("recvfrom");
       break;
@@ -80,7 +88,7 @@ int main() {
   signal(SIGTERM, sigh);
   thrd_t sendt, recvt;
   thrd_create(&sendt, sendh, p);
-  thrd_create(&recvt, sendh, p);
+  thrd_create(&recvt, recvh, p);
 
   thrd_join(sendt, 0);
   thrd_join(recvt, 0);

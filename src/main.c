@@ -1,6 +1,7 @@
 #include "../inc/def.h"
 #include <SDL3/SDL_main.h>
 #include <SDL3/SDL_vulkan.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <semaphore.h>
 #include <spawn.h>
@@ -16,7 +17,8 @@
 static vec3 dir;
 static f32 scale;
 vec2 mousepos;
-bool quit;
+volatile bool quit;
+static void sigh(int) { quit = 1; }
 #define inputdir(d)                                                            \
   case 'w':                                                                    \
     dir.z += d;                                                                \
@@ -75,11 +77,15 @@ static int recvh(void *p) {
   Smem *sm = p;
   struct timespec ts = {0, 1000000};
   while (!quit) {
-    sem_timedwait(&sm->semr, &ts);
-    int val;
-    sem_getvalue(&sm->semr, &val);
-    if (!val)
-      continue;
+    auto v = sem_timedwait(&sm->semr, &ts);
+    if (v == -1) {
+      if (errno == ETIMEDOUT)
+        continue;
+      else {
+        perror("sem");
+        break;
+      }
+    }
     memcpy(pdata, sm->bufr, sizeof(sm->bufr));
   }
   return 0;
@@ -102,6 +108,9 @@ int main() {
   close(fd);
   sem_init(&p->sems, 1, 0);
   sem_init(&p->semr, 1, 0);
+
+  signal(SIGINT, sigh);
+  signal(SIGTERM, sigh);
   extern void crtwin(), crtinst(), crtsrf();
   extern int gpu(void *);
   crtwin();
