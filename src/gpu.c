@@ -435,9 +435,9 @@ int gpu(void *) {
       .layout = layout,
   };
 
-  crtshdinfo(tri_vert, VERTEX);
-  crtshdinfo(tri_frag, FRAGMENT);
-  VkPipelineShaderStageCreateInfo stginfo[] = {tri_vert_info, tri_frag_info};
+  crtshdinfo(point_vert, VERTEX);
+  crtshdinfo(point_frag, FRAGMENT);
+  VkPipelineShaderStageCreateInfo stginfo[] = {point_vert_info, point_frag_info};
   grapinfo.pStages = stginfo;
   VkPipeline pipeline;
   vkCreateGraphicsPipelines(dev, 0, 1, &grapinfo, 0, &pipeline);
