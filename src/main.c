@@ -67,7 +67,7 @@ static int recvh(void *p) {
       }
     }
     memcpy(pdata + i, sm->bufr, sizeof(sm->bufr));
-    i = i + 1024 & 65535;
+    i = i + 1024 & 1048575;
   }
   return 0;
 }

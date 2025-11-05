@@ -206,7 +206,7 @@ int gpu(void *) {
   };
   VkBuffer asciibuf, instbuf, pbuf, linebuf;
   vkCreateBuffer(dev, &bufinfo, 0, &asciibuf);
-  bufinfo.size = 65536;
+  bufinfo.size = 1048576;
   bufinfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
   vkCreateBuffer(dev, &bufinfo, 0, &instbuf);
   vkCreateBuffer(dev, &bufinfo, 0, &pbuf);
@@ -608,7 +608,7 @@ int gpu(void *) {
 
     vkCmdBindPipeline(cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pointpipe);
     vkCmdBindVertexBuffers(cmdbuf, 0, 1, &pbuf, &(usize){0});
-    vkCmdDraw(cmdbuf, 65536, 1, 0, 0);
+    vkCmdDraw(cmdbuf, 1048576, 1, 0, 0);
 
     vkCmdBindPipeline(cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, linepipe);
     vkCmdBindVertexBuffers(cmdbuf, 0, 1, &linebuf, &(usize){0});
