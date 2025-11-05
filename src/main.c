@@ -19,26 +19,8 @@ static f32 scale;
 vec2 mousepos;
 volatile bool quit;
 static void sigh(int) { quit = 1; }
-#define inputdir(d)                                                            \
-  case 'w':                                                                    \
-    dir.z += d;                                                                \
-    break;                                                                     \
-  case 's':                                                                    \
-    dir.z -= d;                                                                \
-    break;                                                                     \
-  case 'a':                                                                    \
-    dir.x -= d;                                                                \
-    break;                                                                     \
-  case 'd':                                                                    \
-    dir.x += d;                                                                \
-    break;                                                                     \
-  case ' ':                                                                    \
-    dir.y -= d;                                                                \
-    break;                                                                     \
-  case 'c':                                                                    \
-    dir.y += d;                                                                \
-    break;
 u32 w, h;
+sem_t sendsem;
 static void iter() {
   SDL_Event event;
   SDL_WaitEvent(&event);
@@ -59,15 +41,12 @@ static void iter() {
     if (event.key.repeat)
       break;
     switch (event.key.key) {
-      inputdir(1);
+    case '\r':
+      sem_post(&sendsem);
+      break;
     case 'h':
       quit = 1;
     }
-    break;
-  case SDL_EVENT_KEY_UP:
-    if (event.key.repeat)
-      break;
-    switch (event.key.key) { inputdir(-1); }
     break;
   }
 }
@@ -94,8 +73,19 @@ static int recvh(void *p) {
 }
 static int sendh(void *p) {
   Smem *sm = p;
+  struct timespec ts = {0, 1000000};
   while (!quit) {
+    auto v = sem_timedwait(&sendsem, &ts);
+    if (v == -1) {
+      if (errno == ETIMEDOUT)
+        continue;
+      else {
+        perror("sem");
+        break;
+      }
+    }
     memset(sm->bufs, mousepos.x, 8192);
+    sem_post(&sm->sems);
   }
   quit = 1;
   return 0;
@@ -118,6 +108,7 @@ int main() {
   close(fd);
   sem_init(&p->sems, 1, 0);
   sem_init(&p->semr, 1, 0);
+  sem_init(&sendsem, 0, 0);
   p->hs.p = 0x1919;
   p->hs.src = 0x2222;
   p->hs.dst = 0x6666;

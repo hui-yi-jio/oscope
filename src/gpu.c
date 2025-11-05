@@ -17,7 +17,7 @@ void crtwin() {
   auto displays = SDL_GetDisplays(0);
   auto modes = SDL_GetCurrentDisplayMode(displays[0]);
   f32 scale = modes->pixel_density;
-  w = 1500, h = 900;
+  w = 1600, h = 1024;
 #define WFLAGS                                                                 \
   SDL_WINDOW_VULKAN | SDL_WINDOW_HIGH_PIXEL_DENSITY | SDL_WINDOW_RESIZABLE
   win = SDL_CreateWindow("test", w / scale, h / scale, WFLAGS);
