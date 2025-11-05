@@ -1,3 +1,4 @@
+#include "../inc/const.h"
 #include "../inc/def.h"
 #include <SDL3/SDL_main.h>
 #include <SDL3/SDL_vulkan.h>
@@ -29,10 +30,15 @@ static void iter() {
     quit = 1;
     return;
   case SDL_EVENT_MOUSE_MOTION:
-    mousepos.x = event.motion.x;
-    mousepos.y = event.motion.y;
-    printf("%f,%f\n", mousepos.x, mousepos.y);
+    mousepos.x = event.motion.x / w * 2 - 1;
+    mousepos.y = event.motion.y / h * 2 - 1;
     if (event.motion.state & 1) {
+      if (mousepos.x < -I_3) {
+        if (abs(mousepos.y - pe) < 1e-2)
+          pe = mousepos.y;
+        else if (abs(mousepos.y - ne) < 1e-2)
+          ne = mousepos.y;
+      }
     }
     break;
   case SDL_EVENT_MOUSE_WHEEL:

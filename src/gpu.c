@@ -239,7 +239,6 @@ int gpu(void *) {
   } *linedata;
   vkMapMemory(dev, linemem, 0, memreq.size, 0, (void *)&linedata);
   usize linecnt = 0;
-  const f32 I_3 = 1 / 3.;
   linedata[linecnt++] = (struct line){{-1, 0, -I_3, 0}, {1, 0, 0, 1}};
   linedata[linecnt++] = (struct line){{-1, -1, -I_3, -1}, {0, 1, 0, 1}};
 
