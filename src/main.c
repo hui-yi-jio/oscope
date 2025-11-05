@@ -14,9 +14,9 @@
 #include <unistd.h>
 #include <vulkan/vulkan_core.h>
 
-static vec3 dir;
 static f32 scale;
 vec2 mousepos;
+f32 pe, ne;
 volatile bool quit;
 static void sigh(int) { quit = 1; }
 u32 w, h;
@@ -29,10 +29,11 @@ static void iter() {
     quit = 1;
     return;
   case SDL_EVENT_MOUSE_MOTION:
-    mousepos.x += event.motion.xrel;
-    mousepos.y += event.motion.yrel;
-    mousepos = min(mousepos, (vec2){w, h});
-    mousepos = max(mousepos, (vec2){});
+    mousepos.x = event.motion.x;
+    mousepos.y = event.motion.y;
+    printf("%f,%f\n", mousepos.x, mousepos.y);
+    if (event.motion.state & 1) {
+    }
     break;
   case SDL_EVENT_MOUSE_WHEEL:
     scale += event.wheel.y * 50;

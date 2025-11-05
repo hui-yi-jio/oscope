@@ -240,12 +240,13 @@ int gpu(void *) {
   vkMapMemory(dev, linemem, 0, memreq.size, 0, (void *)&linedata);
   usize linecnt = 0;
   const f32 I_3 = 1 / 3.;
+  linedata[linecnt++] = (struct line){{-1, 0, -I_3, 0}, {1, 0, 0, 1}};
+  linedata[linecnt++] = (struct line){{-1, -1, -I_3, -1}, {0, 1, 0, 1}};
+
   linedata[linecnt++] = (struct line){{-I_3, -1, -I_3, 1}, {1, 1, 1, 1}};
   linedata[linecnt++] = (struct line){{I_3, -1, I_3, 1}, {1, 1, 1, 1}};
   linedata[linecnt++] = (struct line){{-1, 0, I_3, 0}, {1, 1, 1, 1}};
   linedata[linecnt++] = (struct line){{-1, -I_3, I_3, -I_3}, {1, 1, 1, 1}};
-  linedata[linecnt++] =
-      (struct line){{-1, 1 - I_3, I_3, 1 - I_3}, {1, 1, 1, 1}};
 
   VkFence fence;
   VkFenceCreateInfo fenceInfo = {.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
@@ -549,6 +550,7 @@ int gpu(void *) {
   } cmn;
   extern bool quit;
   extern vec2 mousepos;
+  extern f32 pe, ne;
   u32 idx;
   time_t t0 = 0, fc = 0, fps;
   while (!quit) {
@@ -567,6 +569,9 @@ int gpu(void *) {
     usize uicnt = 1;
     sprintf(buf, "fps:%lu", fps);
     display(uidata, &uicnt, -1, fonty, fontw, buf);
+
+    linedata[0].pos.yw = (vec2){pe,pe};
+    linedata[1].pos.yw = (vec2){ne,ne};
 
     vkWaitForFences(dev, 1, &fence, 1, -1);
     vkResetFences(dev, 1, &fence);
