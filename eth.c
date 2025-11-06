@@ -63,7 +63,7 @@ static int recvh(void *p) {
     if (buf.h.p != 0x1919 || buf.h.src == local)
       continue;
     u16 s = buf.h.seq;
-    u64 lo = s - seq - 1;
+    u16 lo = s - seq - 1;
     seq = s;
     loss += lo;
     if (lo)

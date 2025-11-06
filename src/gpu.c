@@ -17,7 +17,7 @@ void crtwin() {
   auto displays = SDL_GetDisplays(0);
   auto modes = SDL_GetCurrentDisplayMode(displays[0]);
   f32 scale = modes->pixel_density;
-  w = 1800, h = 1024;
+  w = 1800, h = 768;
 #define WFLAGS                                                                 \
   SDL_WINDOW_VULKAN | SDL_WINDOW_HIGH_PIXEL_DENSITY | SDL_WINDOW_RESIZABLE
   win = SDL_CreateWindow("test", w / scale, h / scale, WFLAGS);
@@ -622,12 +622,15 @@ int gpu(void *) {
     vkCmdBindPipeline(cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pointpipe);
     vkCmdBindVertexBuffers(cmdbuf, 0, 1, &pbuf, &(usize){0});
     vkCmdDraw(cmdbuf, pcnt & 1048575, 1, 0, 0);
+    extern usize trig;
+    printf("%lu\n",trig);
+    vkCmdDraw(cmdbuf, pcnt - trig & 1048575, 1, trig, 1);
 
     vkCmdBindPipeline(cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, linepipe);
     vkCmdBindVertexBuffers(cmdbuf, 0, 1, &linebuf, &(usize){0});
     vkCmdDraw(cmdbuf, 2, linecnt, 0, 0);
     extern usize mscnt;
-    vkCmdDraw(cmdbuf, 2, mscnt,0,1024);
+    vkCmdDraw(cmdbuf, 2, mscnt, 0, 1024);
 
     vkCmdBindPipeline(cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, uipipe);
     vkCmdBindVertexBuffers(cmdbuf, 0, 1, &instbuf, &(usize){0});

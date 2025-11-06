@@ -18,12 +18,16 @@
 volatile bool quit;
 static void sigh(int) { quit = 1; }
 u8 *pdata;
+f32 pe = -I2_3, ne = -I2_3;
+usize trig;
 static int recvh(void *p) {
   Smem *sm = p;
   struct timespec ts = {0, 1000000};
-  usize i = 0;
+  usize i = 0, stat = 0;
   while (!quit) {
     auto v = sem_timedwait(&sm->semr, &ts);
+    u16 pt = -128 - pe * 384;
+    u16 nt = -128 - ne * 384;
     if (v == -1) {
       if (errno == ETIMEDOUT)
         continue;
@@ -32,8 +36,26 @@ static int recvh(void *p) {
         break;
       }
     }
-    memcpy(pdata + i, sm->bufr, sizeof(sm->bufr));
-    i = i + 1024 & 1048575;
+    for (usize j = 0; j < 1024; ++j) {
+      u8 val = sm->bufr[j];
+      pdata[i + j] = val;
+      switch (stat) {
+      case 0:
+        stat += val < nt;
+        break;
+      case 1:
+        stat += val > pt;
+        break;
+      case 2:
+        ++stat;
+        trig = i + j;
+      }
+    }
+    i += 1024;
+    if (i > 1048575) {
+      i = 0;
+      stat = 0;
+    }
   }
   return 0;
 }
@@ -69,9 +91,8 @@ static int sendh(void *p) {
   return 0;
 }
 
-f32 pe = -.75, ne = -.5;
 u32 w, h;
-f32 scale = 1;
+f32 scale = 1024;
 int main() {
   int fd = shm_open("oscope", O_CREAT | O_RDWR, 0o666);
   if (fd == -1) {
