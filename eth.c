@@ -1,7 +1,7 @@
 #include "inc/def.h"
-#include <errno.h>
 #include <arpa/inet.h>
 #include <assert.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <net/ethernet.h>
 #include <net/if.h>
@@ -54,6 +54,7 @@ static int recvh(void *p) {
     Head h;
     u8 d[1024];
   } buf;
+  struct timespec ts = {0, 1000000};
   while (!quit) {
     auto l = recvfrom(socketh, &buf, sizeof(Head) + 1024, 0, 0, 0);
     if (l == -1) {
@@ -68,8 +69,21 @@ static int recvh(void *p) {
     loss += lo;
     if (lo)
       printf("loss:%ld\n", loss);
+
+  wait:
+    if (quit)
+      break;
+    auto v = sem_timedwait(&sm->semrp, &ts);
+    if (v == -1) {
+      if (errno == ETIMEDOUT)
+        goto wait;
+      else {
+        perror("sem");
+        break;
+      }
+    }
     memcpy(&sm->bufr, buf.d, l);
-    sem_post(&sm->semr);
+    sem_post(&sm->semrc);
   }
   quit = 1;
   puts("recv exit");

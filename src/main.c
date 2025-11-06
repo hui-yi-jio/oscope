@@ -18,14 +18,14 @@
 volatile bool quit;
 static void sigh(int) { quit = 1; }
 u8 *pdata;
-f32 pe = -I2_3 + .125, ne = -I2_3 - .125;
+f32 pe = -I2_3 - .125, ne = -I2_3 + .125;
 usize trig;
 static int recvh(void *p) {
   Smem *sm = p;
   struct timespec ts = {0, 1000000};
   usize i = 0, stat = 0;
   while (!quit) {
-    auto v = sem_timedwait(&sm->semr, &ts);
+    auto v = sem_timedwait(&sm->semrc, &ts);
     u16 pt = -128 - pe * 384;
     u16 nt = -128 - ne * 384;
     if (v == -1) {
@@ -37,20 +37,21 @@ static int recvh(void *p) {
       }
     }
     for (usize j = 0; j < 1024; ++j) {
-      u8 val = sm->bufr[j];
+      u16 val = sm->bufr[j];
       pdata[i + j] = val;
       switch (stat) {
       case 0:
         stat += val < nt;
-        break;
+	break;
       case 1:
         stat += val > pt;
-        break;
+	break;
       case 2:
-        ++stat;
+	++stat;
         trig = i + j;
       }
     }
+    sem_post(&sm->semrp);
     i += 1024;
     if (i > 1048575) {
       i = 0;
@@ -92,7 +93,7 @@ static int sendh(void *p) {
 }
 
 u32 w, h;
-f32 scale = 1024;
+f32 scale = 2048;
 int main() {
   int fd = shm_open("oscope", O_CREAT | O_RDWR, 0o666);
   if (fd == -1) {
@@ -110,7 +111,8 @@ int main() {
   }
   close(fd);
   sem_init(&p->sems, 1, 0);
-  sem_init(&p->semr, 1, 0);
+  sem_init(&p->semrp, 1, 1);
+  sem_init(&p->semrc, 1, 0);
   sem_init(&sendsem, 0, 0);
   p->hs.p = 0x1919;
   p->hs.src = 0x2222;
@@ -190,7 +192,8 @@ int main() {
   thrd_join(recvt, &res);
   thrd_join(sendt, &res);
   sem_destroy(&p->sems);
-  sem_destroy(&p->semr);
+  sem_destroy(&p->semrp);
+  sem_destroy(&p->semrc);
   munmap(p, sizeof(Smem));
   shm_unlink("oscope");
 }

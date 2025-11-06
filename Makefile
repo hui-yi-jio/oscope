@@ -22,7 +22,7 @@ all: $(TARGET) obj/eth
 build: $(TARGET)
 
 obj/eth: eth.c
-	$(CC) $(CFLAGS) $(LDFLAGS) $< -o obj/$@
+	$(CC) $(CFLAGS) $(LDFLAGS) $< -o $@
 
 $(TARGET): $(OBJS)
 	$(LD) $(LDFLAGS) $(OBJS) -o $@

@@ -21,7 +21,7 @@ typedef struct {
   u128 dst : 48, src : 48, p : 16, seq : 16;
 } Head;
 typedef struct {
-  sem_t sems, semr;
+  sem_t sems, semrp, semrc;
   Head hs;
   u8 bufs[8192];
   Head hr;
