@@ -144,6 +144,7 @@ static f32 fun() {
   f32 reg[64];
   for (usize i = 0; i < codecnt; ++i) {
     Code c = code[i];
+    // printf("code:%x,%x,%x,%x\n", c.op, c.dst, c.r0, c.r1);
     f32 op0 = c.imm0 ? c.i0 : reg[c.r0];
     f32 op1 = c.imm1 ? c.i1 : reg[c.r1];
     reg[c.dst] = fns[c.op](op0, op1);
@@ -199,36 +200,40 @@ char ibuf[64];
 void compile() {
   char *p0 = ibuf, *p1 = p0;
   char *fns[] = {"t", "sin"};
+  Reg reg[64];
   usize regcnt = 0;
   codecnt = 0;
-  Reg reg[64];
   while (*p1) {
     f32 val = strtof(p0, &p1);
+    printf("start:%ld\n", regcnt);
     if (p0 == p1) {
-      while (*p1 && *p1 != ' ')
-        ++p1;
+      while (*p1 && *p1++ != ' ')
+        ;
       int op = -1;
       for (int i = 0; i < 2; ++i)
-        if (!strncmp(p0, fns[i], p1 - p0))
+        if (!strncmp(p0, fns[i], p1 - p0 - 1))
           op = i;
-      code[codecnt].op = 0;
+      printf("s:%s\tcnt:%ld\top:%d\n", p0, p1 - p0, op);
       switch (op) {
       case 0:
-        code[codecnt++].dst = regcnt++;
+        code[codecnt++] = (Code){.op = 0, .dst = regcnt++};
         break;
       case 1:
-        u32 imm = reg[regcnt].imm;
-        code[codecnt].imm0 = imm;
+        Code c = {.op = 1};
+        u32 imm = reg[regcnt - 1].imm;
+        c.imm0 = imm;
         if (imm)
-          code[codecnt].i0 = reg[regcnt].num;
+          c.i0 = reg[regcnt - 1].num;
         else
-          code[codecnt].r0 = regcnt - 1;
-        code[codecnt++].dst = regcnt - 1;
+          c.r0 = regcnt - 1;
+        c.dst = regcnt - 1;
+        code[codecnt++] = c;
         break;
       }
     } else {
       reg[regcnt++] = (Reg){1, val};
     }
+    printf("end:%ld, cnt:%ld\n", regcnt, codecnt);
     p0 = p1;
   }
 }
