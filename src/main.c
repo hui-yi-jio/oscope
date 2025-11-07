@@ -172,7 +172,7 @@ void compile() {
 	      continue;
       }
       int op = -1;
-      for (int i = 0; i < 4; ++i)
+      for (int i = 0; i < 5; ++i)
         if (!strncmp(p0, fns[i], p1 - p0 - 1))
           op = i;
       printf("s:%s\tcnt:%ld\top:%d\n", p0, p1 - p0, op);
@@ -204,6 +204,23 @@ void compile() {
       } break;
       case 3: {
         Code c = {.op = 3};
+        u32 imm = reg[--regcnt - 1].imm;
+        c.imm0 = imm;
+        if (imm)
+          c.i0 = reg[regcnt - 1].num;
+        else
+          c.r0 = regcnt - 1;
+	imm = reg[regcnt].imm;
+        c.imm1 = imm;
+        if (imm)
+          c.i1 = reg[regcnt].num;
+        else
+          c.r1 = regcnt;
+        c.dst = regcnt - 1;
+        code[codecnt++] = c;
+      } break;
+      case 4: {
+        Code c = {.op = 4};
         u32 imm = reg[--regcnt - 1].imm;
         c.imm0 = imm;
         if (imm)
