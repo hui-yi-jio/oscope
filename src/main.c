@@ -1,5 +1,3 @@
-#include "../inc/const.h"
-#include "../inc/def.h"
 #include <SDL3/SDL_main.h>
 #include <SDL3/SDL_vulkan.h>
 #include <errno.h>
@@ -7,6 +5,7 @@
 #include <semaphore.h>
 #include <spawn.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <sys/mman.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
@@ -14,6 +13,9 @@
 #include <threads.h>
 #include <unistd.h>
 #include <vulkan/vulkan_core.h>
+
+#include "../inc/const.h"
+#include "../inc/def.h"
 
 volatile bool quit;
 static void sigh(int) { quit = 1; }
@@ -173,6 +175,23 @@ static int sendh(void *p) {
 u32 w, h;
 f32 scale = 2048;
 char ibuf[64];
+void compile() {
+  char *p0 = ibuf, *p1 = p0;
+  char *fns[] = {"t", "sin"};
+  while (*p1) {
+    f32 val = strtof(p0, &p1);
+    if (p0 == p1) {
+      while (*p1 && *p1 != ' ')
+        ++p1;
+      for (int i = 0; i < 2; ++i)
+        if (!strncmp(p0, fns[i], p1 - p0))
+          printf("%d\n", i);
+    } else {
+      printf("%f\n", val);
+    }
+    p0 = p1;
+  }
+}
 int main() {
   int fd = shm_open("oscope", O_CREAT | O_RDWR, 0o666);
   if (fd == -1) {
@@ -269,6 +288,8 @@ int main() {
       switch (key) {
       case '\r':
         sendm = 1;
+        compile();
+        ibuf[icnt = 0] = 0;
         sem_post(&sendsem);
         break;
       case SDLK_LCTRL:
