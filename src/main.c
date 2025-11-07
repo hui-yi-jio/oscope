@@ -116,6 +116,18 @@ static sem_t sendsem;
 vec2 mousepos;
 usize mscnt;
 static bool sendm;
+static struct {
+  u32 op : 16, imm0 : 1, imm1 : 1;
+  u32 dst;
+  union {
+    u32 r0;
+    f32 i0;
+  };
+  union {
+    u32 r1;
+    f32 i1;
+  };
+} code[32];
 static f32 fun(f32 x) { return sin(x * PI); }
 static int sendh(void *p) {
   Smem *sm = p;
@@ -138,7 +150,7 @@ static int sendh(void *p) {
         f32 x = t * I_3;
         f32 y = fun(t) + 1;
         sm->bufs[i] = y * 128;
-	y *= I_3;
+        y *= I_3;
         lp[i] = (Line){{x0, y0, x, y}, {0, 1, 1, 1}};
         x0 = x, y0 = y;
       }
@@ -160,6 +172,7 @@ static int sendh(void *p) {
 
 u32 w, h;
 f32 scale = 2048;
+char ibuf[64];
 int main() {
   int fd = shm_open("oscope", O_CREAT | O_RDWR, 0o666);
   if (fd == -1) {
@@ -202,6 +215,7 @@ int main() {
 
   bool ctrl = 0;
   vec2 pms = 0;
+  usize icnt = 0;
   while (!quit) {
     SDL_Event event;
     SDL_WaitEvent(&event);
@@ -240,17 +254,21 @@ int main() {
         sendm = 0;
         sem_post(&sendsem);
         break;
-      case 's':
-        sendm = 1;
-        sem_post(&sendsem);
-        break;
       }
       break;
     case SDL_EVENT_KEY_DOWN:
+      auto key = event.key.key;
+      if (icnt > 62)
+        continue;
+      if (key > 31 && key < 127) {
+        ibuf[icnt++] = key;
+	ibuf[icnt] = 0;
+      }
       if (event.key.repeat)
         break;
-      switch (event.key.key) {
+      switch (key) {
       case '\r':
+        sendm = 1;
         sem_post(&sendsem);
         break;
       case SDLK_LCTRL:
@@ -258,8 +276,6 @@ int main() {
         pms.x = -I_3;
         mscnt = 0;
         break;
-      case 'h':
-        quit = 1;
       }
       break;
     }

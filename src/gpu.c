@@ -562,7 +562,7 @@ int gpu(void *p) {
       fc = 0;
       t0 = ts.tv_sec;
     }
-    cmn.scl = 4 / (vec2){w, h};
+    cmn.scl = 2 / (vec2){w, h};
     extern f32 scale;
     cmn.scale = 1 / scale;
     extern usize trig;
@@ -573,6 +573,8 @@ int gpu(void *p) {
     usize uicnt = 1;
     sprintf(buf, "fps:%lu, div:%u, scale:%f", fps, sm->hs.seq, scale);
     display(uidata, &uicnt, -1, fonty, fontw, buf);
+    extern char ibuf[];
+    display(uidata, &uicnt, -I_3, -I_3, fontw, ibuf);
 
     linedata[0].pos.yw = (vec2){pe, pe};
     linedata[1].pos.yw = (vec2){ne, ne};
