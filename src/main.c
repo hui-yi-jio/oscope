@@ -265,7 +265,7 @@ static int sendh(void *p) {
         fnvart = t;
         f32 x = t * I_3;
         f32 y = fun() + 1;
-        sm->bufs[i] = y * 128;
+        sm->bufs[i] = y * 127.5;
         y *= I_3;
         lp[i] = (Line){{x0, y0, x, y}, {0, 1, 1, 1}};
         x0 = x, y0 = y;
